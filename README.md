@@ -1,3 +1,2 @@
-[vibe-ish coded semaphore decoder](semaphore.html)
-[vibe coded braille decoder](braille.html)
-
+* [vibe-ish coded semaphore decoder](semaphore.html)
+* [vibe coded braille decoder](braille.html)
