@@ -288,6 +288,27 @@
                 updateUI();
             };
 
+            const toggleAngle = (angle) => {
+                const lastSelected = selectedAngles.length > 0 ? selectedAngles[selectedAngles.length - 1] : null;
+
+                if (angle === lastSelected) {
+                    return;
+                }
+
+                const index = selectedAngles.indexOf(angle);
+                if (index > -1) {
+                    selectedAngles.splice(index, 1);
+                }
+                selectedAngles.push(angle);
+
+                if (selectedAngles.length > 2) {
+                    selectedAngles.shift();
+                }
+
+                // Finally, update the UI to show the changes.
+                updateUI();
+            };
+
             const handleFlagClick = (e) => {
                 const angle = parseInt(e.currentTarget.dataset.angle, 10);
                 toggleAngle(angle);
