@@ -278,17 +278,6 @@
             };
 
             const toggleAngle = (angle) => {
-                // Angle is not selected, so add it.
-                selectedAngles.push(angle);
-                // If we now have more than 2 angles, remove the oldest one.
-                if (selectedAngles.length > 2) {
-                    selectedAngles.shift();
-                }
-                // After any change, update the visual display.
-                updateUI();
-            };
-
-            const toggleAngle = (angle) => {
                 const lastSelected = selectedAngles.length > 0 ? selectedAngles[selectedAngles.length - 1] : null;
 
                 if (angle === lastSelected) {
