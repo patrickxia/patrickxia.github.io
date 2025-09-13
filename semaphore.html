@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corrected Semaphore Decoder with Transformations</title>
+    <style>
+        :root {
+            --flag-width: 150px;
+            --flag-height: 25px;
+            --border-color: #333;
+            --bg-color: #f4f4f9;
+            --selected-color: #ffeb3b; /* Yellow */
+            --hover-color: #e0e0e0;
+            --primary-blue: #007bff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #111;
+        }
+
+        .semaphore-container {
+            position: relative;
+            width: calc(var(--flag-width) * 2.2);
+            height: calc(var(--flag-width) * 2.2);
+            margin: 40px auto;
+        }
+
+        .flag {
+            position: absolute;
+            width: var(--flag-width);
+            height: var(--flag-height);
+            border: 2px solid var(--border-color);
+            background-color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            font-weight: bold;
+            box-sizing: border-box;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0% 50%;
+            margin-top: calc(var(--flag-height) / -2);
+        }
+
+        .flag:hover {
+            background-color: var(--hover-color);
+        }
+
+        .flag.selected {
+            background-color: var(--selected-color);
+        }
+
+        .flag[data-angle="0"]   { transform: rotate(-90deg)  translateX(15px); }
+        .flag[data-angle="45"]  { transform: rotate(-45deg)  translateX(15px); }
+        .flag[data-angle="90"]  { transform: rotate(0deg)    translateX(15px); }
+        .flag[data-angle="135"] { transform: rotate(45deg)   translateX(15px); }
+        .flag[data-angle="180"] { transform: rotate(90deg)   translateX(15px); }
+        .flag[data-angle="225"] { transform: rotate(135deg)  translateX(15px); }
+        .flag[data-angle="270"] { transform: rotate(180deg)  translateX(15px); }
+        .flag[data-angle="315"] { transform: rotate(225deg)  translateX(15px); }
+
+        .flag span {
+             transform: rotate(90deg);
+        }
+        .flag[data-angle="90"] span,
+        .flag[data-angle="270"] span {
+            transform: none;
+        }
+
+
+        .status-display {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        #decoded-char {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            background-color: #fafafa;
+            margin-left: 10px;
+        }
+
+        .current-angles-text {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 1.2em;
+        }
+
+        .output-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .output-box {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .output-box label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+            color: #555;
+            text-align: left;
+        }
+
+        .output-box textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.2rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .controls button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .controls button:active {
+            transform: scale(0.98);
+        }
+
+        #add-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: bold;
+        }
+        #add-btn:hover {
+            background-color: #0056b3;
+        }
+
+        #clear-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        #clear-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Semaphore Decoder & Transformer</h1>
+        <div class="semaphore-container">
+            <div class="flag" data-angle="0"><span>0 (N)</span></div>
+            <div class="flag" data-angle="45"><span>45 (NE)</span></div>
+            <div class="flag" data-angle="90"><span>90 (E)</span></div>
+            <div class="flag" data-angle="135"><span>135 (SE)</span></div>
+            <div class="flag" data-angle="180"><span>180 (S)</span></div>
+            <div class="flag" data-angle="225"><span>225 (SW)</span></div>
+            <div class="flag" data-angle="270"><span>270 (W)</span></div>
+            <div class="flag" data-angle="315"><span>315 (NW)</span></div>
+        </div>
+        <div class="status-display">
+            Decoded: <span id="decoded-char">?</span>
+        </div>
+        <div class="current-angles-text">
+            Currently selected angles: <span id="selected-angles-text">None</span>
+        </div>
+        <div class="controls">
+            <button id="add-btn">ADD (or press '.')</button>
+            <button id="clear-btn">CLEAR TEXTBOXES</button>
+        </div>
+        <div class="output-grid">
+            <div class="output-box">
+                <label for="output-0">Original</label>
+                <textarea id="output-0" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-90">Rotated 90°</label>
+                <textarea id="output-90" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-180">Rotated 180°</label>
+                <textarea id="output-180" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-270">Rotated 270°</label>
+                <textarea id="output-270" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-reflect-0">Reflected</label>
+                <textarea id="output-reflect-0" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-reflect-90">Reflected + Rotated 90°</label>
+                <textarea id="output-reflect-90" readonly></textarea>
+            </div>
+             <div class="output-box">
+                <label for="output-reflect-180">Reflected + Rotated 180°</label>
+                <textarea id="output-reflect-180" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-reflect-270">Reflected + Rotated 270°</label>
+                <textarea id="output-reflect-270" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const flags = document.querySelectorAll('.flag');
+            const decodedCharEl = document.getElementById('decoded-char');
+            const selectedAnglesTextEl = document.getElementById('selected-angles-text');
+            const addBtn = document.getElementById('add-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const outputTextareas = document.querySelectorAll('.output-box textarea');
+
+            let selectedAngles = [];
+
+            // Updated semaphore map as per your correction
+            const semaphoreMap = {
+                '180,225': 'A', '180,270': 'B', '180,315': 'C', '0,180': 'D',
+                '45,180': 'E', '90,180': 'F', '135,180': 'G', '225,270': 'H',
+                '225,315': 'I', '0,90': 'J', '0,225': 'K', '45,225': 'L',
+                '90,225': 'M', '135,225': 'N', '270,315': 'O', '0,270': 'P',
+                '45,270': 'Q', '90,270': 'R', '135,270': 'S', '0,315': 'T',
+                '45,315': 'U', '0,135': 'V', '45,90': 'W', '45,135': 'X',
+                '90,315': 'Y', '90,135': 'Z'
+            };
+            
+            const reflectionMap = {
+                0: 0, 45: 315, 90: 270, 135: 225, 180: 180,
+                225: 135, 270: 90, 315: 45
+            };
+
+            const handleFlagClick = (e) => {
+                const angle = parseInt(e.currentTarget.dataset.angle, 10);
+                const index = selectedAngles.indexOf(angle);
+
+                if (index > -1) {
+                    selectedAngles.splice(index, 1);
+                } else {
+                    selectedAngles.push(angle);
+                    if (selectedAngles.length > 2) {
+                        selectedAngles.shift();
+                    }
+                }
+                updateUI();
+            };
+
+            const decodeSelection = () => {
+                if (selectedAngles.length !== 2) return '?';
+                const key = [...selectedAngles].sort((a, b) => a - b).join(',');
+                return semaphoreMap[key] || '?';
+            };
+
+            const updateUI = () => {
+                flags.forEach(flag => {
+                    const angle = parseInt(flag.dataset.angle, 10);
+                    flag.classList.toggle('selected', selectedAngles.includes(angle));
+                });
+                selectedAnglesTextEl.textContent = selectedAngles.length > 0 ? selectedAngles.join(', ') : 'None';
+                decodedCharEl.textContent = decodeSelection();
+            };
+            
+            // REWRITTEN LOGIC: Transforms angles directly before decoding.
+            const getCharFromTransformedAngles = (angles, rotation, reflect) => {
+                let transformedAngles = [...angles]; // Work on a copy
+
+                if (reflect) {
+                    transformedAngles = transformedAngles.map(angle => reflectionMap[angle]);
+                }
+
+                transformedAngles = transformedAngles.map(angle => (angle + rotation) % 360);
+                
+                const key = transformedAngles.sort((a, b) => a - b).join(',');
+                return semaphoreMap[key] || '?';
+            };
+            
+            const addCharacter = () => {
+                // Only proceed if two angles are selected
+                if (selectedAngles.length !== 2) return;
+
+                // Pass the raw selectedAngles to the transformation function for each case
+                document.getElementById('output-0').value += getCharFromTransformedAngles(selectedAngles, 0, false);
+                document.getElementById('output-90').value += getCharFromTransformedAngles(selectedAngles, 90, false);
+                document.getElementById('output-180').value += getCharFromTransformedAngles(selectedAngles, 180, false);
+                document.getElementById('output-270').value += getCharFromTransformedAngles(selectedAngles, 270, false);
+                
+                document.getElementById('output-reflect-0').value += getCharFromTransformedAngles(selectedAngles, 0, true);
+                document.getElementById('output-reflect-90').value += getCharFromTransformedAngles(selectedAngles, 90, true);
+                document.getElementById('output-reflect-180').value += getCharFromTransformedAngles(selectedAngles, 180, true);
+                document.getElementById('output-reflect-270').value += getCharFromTransformedAngles(selectedAngles, 270, true);
+
+                selectedAngles = [];
+                updateUI();
+            };
+
+            const clearTextboxes = () => {
+                outputTextareas.forEach(textarea => textarea.value = '');
+            };
+
+            flags.forEach(flag => flag.addEventListener('click', handleFlagClick));
+            addBtn.addEventListener('click', addCharacter);
+            clearBtn.addEventListener('click', clearTextboxes);
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '.') {
+                    e.preventDefault();
+                    addCharacter();
+                }
+            });
+            
+            updateUI();
+        });
+    </script>
+</body>
+</html>
