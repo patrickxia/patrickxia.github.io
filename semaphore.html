@@ -277,19 +277,20 @@
                 225: 135, 270: 90, 315: 45
             };
 
+            const toggleAngle = (angle) => {
+                // Angle is not selected, so add it.
+                selectedAngles.push(angle);
+                // If we now have more than 2 angles, remove the oldest one.
+                if (selectedAngles.length > 2) {
+                    selectedAngles.shift();
+                }
+                // After any change, update the visual display.
+                updateUI();
+            };
+
             const handleFlagClick = (e) => {
                 const angle = parseInt(e.currentTarget.dataset.angle, 10);
-                const index = selectedAngles.indexOf(angle);
-
-                if (index > -1) {
-                    selectedAngles.splice(index, 1);
-                } else {
-                    selectedAngles.push(angle);
-                    if (selectedAngles.length > 2) {
-                        selectedAngles.shift();
-                    }
-                }
-                updateUI();
+                toggleAngle(angle);
             };
 
             const decodeSelection = () => {
@@ -349,12 +350,36 @@
             clearBtn.addEventListener('click', clearTextboxes);
             
             document.addEventListener('keydown', (e) => {
-                if (e.key === '.') {
+                // A map for letter keys ("expanded WASD") to angles
+                const keyMap = {
+                    'q': 315, 'w': 0,   'e': 45,
+                    'a': 270,          'd': 90,
+                    'z': 225, 'x': 180, 'c': 135
+                };
+
+                // A map for numpad keys (using e.code for reliability) to angles
+                const numpadMap = {
+                    'Numpad7': 315, 'Numpad8': 0,   'Numpad9': 45,
+                    'Numpad4': 270,                'Numpad6': 90,
+                    'Numpad1': 225, 'Numpad2': 180, 'Numpad3': 135
+                };
+
+                const key = e.key.toLowerCase();
+                const code = e.code;
+
+                // Check if the pressed key is for selecting an angle
+                if (keyMap[key] !== undefined) {
+                    e.preventDefault(); // Prevent typing the letter in an input
+                    toggleAngle(keyMap[key]);
+                } else if (numpadMap[code] !== undefined) {
+                    e.preventDefault(); // Prevent numpad from typing
+                    toggleAngle(numpadMap[code]);
+                } else if (key === '.') {
+                    // Check if the pressed key is for adding the character
                     e.preventDefault();
                     addCharacter();
                 }
             });
-            
             updateUI();
         });
     </script>
