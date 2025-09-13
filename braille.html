@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braille Encoder & Transformer</title>
+    <style>
+        :root {
+            --dot-size: 60px;
+            --border-color: #aaa;
+            --bg-color: #f4f4f9;
+            --selected-color: #1a1a1a;
+            --primary-blue: #007bff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #111;
+        }
+
+        .braille-cell {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: calc(var(--dot-size) * 2 + 20px);
+            margin: 40px auto;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+        }
+
+        .dot {
+            width: var(--dot-size);
+            height: var(--dot-size);
+            border: 3px solid var(--border-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
+        .dot.selected {
+            background-color: var(--selected-color);
+            border-color: var(--selected-color);
+        }
+
+        .status-display {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        #decoded-char {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            background-color: #fafafa;
+            margin-left: 10px;
+            font-size: 1.8rem;
+        }
+
+        .current-dots-text {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 1.2em;
+        }
+
+        .output-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .output-box {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .output-box label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+            color: #555;
+            text-align: left;
+        }
+
+        .output-box textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.2rem;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .controls button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .controls button:active {
+            transform: scale(0.98);
+        }
+
+        #add-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            font-weight: bold;
+        }
+
+        #clear-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Braille Encoder & Transformer</h1>
+        <div class="braille-cell">
+            <div class="dot" data-dot="1">1</div>
+            <div class="dot" data-dot="4">4</div>
+            <div class="dot" data-dot="2">2</div>
+            <div class="dot" data-dot="5">5</div>
+            <div class="dot" data-dot="3">3</div>
+            <div class="dot" data-dot="6">6</div>
+        </div>
+
+        <div class="status-display">
+            Decoded: <span id="decoded-char">?</span>
+        </div>
+        <div class="current-dots-text">
+            Currently selected dots: <span id="selected-dots-text">None</span>
+        </div>
+
+        <div class="controls">
+            <button id="add-btn">ADD (or press '.')</button>
+            <button id="clear-btn">CLEAR TEXTBOXES</button>
+        </div>
+
+        <div class="output-grid">
+            <div class="output-box">
+                <label for="output-original">Original</label>
+                <textarea id="output-original" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-mirrored">Mirrored</label>
+                <textarea id="output-mirrored" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-rotated">Rotated 180°</label>
+                <textarea id="output-rotated" readonly></textarea>
+            </div>
+            <div class="output-box">
+                <label for="output-mirrored-rotated">Mirrored + Rotated 180°</label>
+                <textarea id="output-mirrored-rotated" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dots = document.querySelectorAll('.dot');
+            const decodedCharEl = document.getElementById('decoded-char');
+            const selectedDotsTextEl = document.getElementById('selected-dots-text');
+            const addBtn = document.getElementById('add-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const outputTextareas = document.querySelectorAll('.output-box textarea');
+            let selectedDots = [];
+            const toggleDot = (dotNum) => {
+                const index = selectedDots.indexOf(dotNum);
+                if (index > -1) {
+                    selectedDots.splice(index, 1);
+                } else {
+                    selectedDots.push(dotNum);
+                }
+                updateUI();
+            };
+
+            const brailleMap = {
+                '1': 'A', '1,2': 'B', '1,4': 'C', '1,4,5': 'D', '1,5': 'E',
+                '1,2,4': 'F', '1,2,4,5': 'G', '1,2,5': 'H', '2,4': 'I', '2,4,5': 'J',
+                '1,3': 'K', '1,2,3': 'L', '1,3,4': 'M', '1,3,4,5': 'N', '1,3,5': 'O',
+                '1,2,3,4': 'P', '1,2,3,4,5': 'Q', '1,2,3,5': 'R', '2,3,4': 'S', '2,3,4,5': 'T',
+                '1,3,6': 'U', '1,2,3,6': 'V', '2,4,5,6': 'W', '1,3,4,6': 'X', '1,3,4,5,6': 'Y', '1,3,5,6': 'Z',
+                '': ' ' // Empty cell is a space
+            };
+
+            // Map for horizontal reflection: 1<=>4, 2<=>5, 3<=>6
+            const reflectionMap = { 1: 4, 2: 5, 3: 6, 4: 1, 5: 2, 6: 3 };
+            
+            // Map for 180 degree rotation: 1<=>6, 2<=>5, 3<=>4
+            const rotationMap = { 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1 };
+
+            const handleDotClick = (e) => {
+                const dotNum = parseInt(e.currentTarget.dataset.dot, 10);
+                toggleDot(dotNum);
+            };
+
+            const decodeSelection = () => {
+                const key = [...selectedDots].sort((a, b) => a - b).join(',');
+                return brailleMap[key] || '?';
+            };
+
+            const updateUI = () => {
+                dots.forEach(dot => {
+                    const dotNum = parseInt(dot.dataset.dot, 10);
+                    dot.classList.toggle('selected', selectedDots.includes(dotNum));
+                });
+                const sortedDots = [...selectedDots].sort((a, b) => a - b);
+                selectedDotsTextEl.textContent = sortedDots.length > 0 ? sortedDots.join(', ') : 'None';
+                decodedCharEl.textContent = decodeSelection();
+            };
+
+            const getCharFromTransformedDots = (dots, reflect, rotate) => {
+                let transformedDots = [...dots];
+
+                if (reflect) {
+                    transformedDots = transformedDots.map(dot => reflectionMap[dot]);
+                }
+                if (rotate) {
+                    transformedDots = transformedDots.map(dot => rotationMap[dot]);
+                }
+                
+                const key = transformedDots.sort((a, b) => a - b).join(',');
+                return brailleMap[key] || '?';
+            };
+
+            const addCharacter = () => {
+                document.getElementById('output-original').value += getCharFromTransformedDots(selectedDots, false, false);
+                document.getElementById('output-mirrored').value += getCharFromTransformedDots(selectedDots, true, false);
+                document.getElementById('output-rotated').value += getCharFromTransformedDots(selectedDots, false, true);
+                document.getElementById('output-mirrored-rotated').value += getCharFromTransformedDots(selectedDots, true, true);
+
+                selectedDots = [];
+                updateUI();
+            };
+
+            const clearTextboxes = () => {
+                outputTextareas.forEach(textarea => textarea.value = '');
+            };
+
+            dots.forEach(dot => dot.addEventListener('click', handleDotClick));
+            addBtn.addEventListener('click', addCharacter);
+            clearBtn.addEventListener('click', clearTextboxes);
+            
+            document.addEventListener('keydown', (e) => {
+                // Map for letter keys (QWASZX layout) to Braille dots
+                const keyMap = {
+                    'q': 1, 'w': 4,
+                    'a': 2, 's': 5,
+                    'z': 3, 'x': 6
+                };
+            
+                // Map for numpad keys (using e.code for reliability) to Braille dots
+                const numpadMap = {
+                    'Numpad7': 1, 'Numpad8': 4,
+                    'Numpad4': 2, 'Numpad5': 5,
+                    'Numpad1': 3, 'Numpad2': 6
+                };
+                
+                const key = e.key.toLowerCase();
+                const code = e.code;
+            
+                // Check if the pressed key is for toggling a dot
+                if (keyMap[key] !== undefined) {
+                    e.preventDefault(); // Prevent typing the letter in an input
+                    toggleDot(keyMap[key]);
+                } else if (numpadMap[code] !== undefined) {
+                    e.preventDefault(); // Prevent numpad from typing
+                    toggleDot(numpadMap[code]);
+                } else if (key === '.') {
+                    // Check if the pressed key is for adding the character
+                    e.preventDefault();
+                    addCharacter();
+                }
+            });
+
+            updateUI();
+        });
+    </script>
+</body>
+</html>
